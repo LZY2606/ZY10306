@@ -365,8 +365,8 @@ WARNING  -  markdown_exec: Execution of python code block exited with errors
 
 ```python title="Rendered traceback"
 Traceback (most recent call last):
-  File "/path/to/markdown_exec/formatters/python.py", line 23, in _run_python
-    exec(code, exec_globals)  # noqa: S102
+  File "/path/to/markdown_exec/_internal/formatters/_exec_python.py", line 8, in exec_python
+    exec(compiled, exec_globals)  # noqa: S102
   File "<executed code block>", line 2, in <module>
     assert 1 + 1 == 11
 AssertionError

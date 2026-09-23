@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from markdown_exec._internal.formatters.base import base_format
-from markdown_exec._internal.formatters.python import _run_python
+from markdown_exec._internal.formatters.python import PythonRunner
 
 if TYPE_CHECKING:
     from markupsafe import Markup
@@ -23,4 +23,4 @@ def _transform_source(code: str) -> tuple[str, str]:
 
 
 def _format_pycon(**kwargs: Any) -> Markup:
-    return base_format(language="pycon", run=_run_python, transform_source=_transform_source, **kwargs)
+    return base_format(language="pycon", runner=PythonRunner(), transform_source=_transform_source, **kwargs)

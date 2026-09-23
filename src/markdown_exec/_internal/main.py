@@ -16,6 +16,8 @@ from markdown_exec._internal.formatters.tree import _format_tree
 from markdown_exec._internal.logger import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from markdown import Markdown
 
 MARKDOWN_EXEC_AUTO = [lang.strip() for lang in os.getenv("MARKDOWN_EXEC_AUTO", "").split(",")]
@@ -122,6 +124,28 @@ def formatter(
     fmt = formatters.get(language, lambda source, **kwargs: source)
     _logger.debug("Executing %s code block with options: %s", language, options)
     return fmt(code=source, md=md, **options)  # type: ignore[operator]
+
+
+def custom_fences(languages: Iterable[str]) -> list[dict[str, Any]]:
+    """Adapt the enabled languages to SuperFences custom fences.
+
+    Parameters:
+        languages: The languages to enable execution for.
+
+    Returns:
+        Custom fences definitions, mapping each language
+        to the [`validator`][markdown_exec.validator] and
+        [`formatter`][markdown_exec.formatter] functions.
+    """
+    return [
+        {
+            "name": language,
+            "class": language,
+            "validator": validator,
+            "format": formatter,
+        }
+        for language in languages
+    ]
 
 
 def _to_bool(value: str) -> bool:

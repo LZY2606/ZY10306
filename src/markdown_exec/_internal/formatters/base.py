@@ -1,97 +1,39 @@
 # Generic formatter for executing code.
+#
+# This module wires the three layers of the execution pipeline together:
+# it builds an immutable parsed block and execution request, runs the
+# request through a runner, and renders the result with a block renderer.
 
 from __future__ import annotations
 
-import os
-from contextlib import contextmanager
-from pathlib import Path
-from textwrap import indent
-from typing import TYPE_CHECKING, Any
-from uuid import uuid4
+from typing import TYPE_CHECKING, Any, Callable
 
 from markupsafe import Markup
 
-from markdown_exec._internal.logger import get_logger
-from markdown_exec._internal.rendering import MarkdownConverter, add_source, code_block
+from markdown_exec._internal.blocks import ParsedBlock
+from markdown_exec._internal.renderer import BlockRenderer
+from markdown_exec._internal.runner import (
+    ExecutionError,
+    ExecutionRequest,
+    FunctionRunner,
+    Runner,
+    console_width,
+    execute,
+    working_directory,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
-
     from markdown.core import Markdown
-
-_logger = get_logger(__name__)
 
 default_tabs = ("Source", "Result")
 """Default tab titles."""
 
 
-@contextmanager
-def working_directory(path: str | None = None) -> Iterator[None]:
-    """Change the working directory for the duration of the context.
-
-    Parameters:
-        path: The path to change the working directory to.
-    """
-    if path:
-        old_cwd = Path.cwd()
-        os.chdir(path)
-        try:
-            yield
-        finally:
-            os.chdir(old_cwd)
-    else:
-        yield
-
-
-@contextmanager
-def console_width(width: int | None = None) -> Iterator[None]:
-    """Set the console width for the duration of the context.
-
-    The console width is set using the `COLUMNS` environment variable.
-
-    Parameters:
-        width: The width to set the console to.
-    """
-    if width:
-        old_width = os.environ.get("COLUMNS", None)
-        os.environ["COLUMNS"] = str(width)
-        try:
-            yield
-        finally:
-            if old_width is None:
-                del os.environ["COLUMNS"]
-            else:
-                os.environ["COLUMNS"] = old_width
-    else:
-        yield
-
-
-class ExecutionError(Exception):
-    """Exception raised for errors during execution of a code block.
-
-    Attributes:
-        message: The exception message.
-        returncode: The code returned by the execution of the code block.
-    """
-
-    def __init__(self, message: str, returncode: int | None = None) -> None:
-        super().__init__(message)
-        self.returncode = returncode
-        """The code returned by the execution of the code block."""
-
-
-def _format_log_details(details: str, *, strip_fences: bool = False) -> str:
-    if strip_fences:
-        lines = details.split("\n")
-        if lines[0].startswith("```") and lines[-1].startswith("```"):
-            details = "\n".join(lines[1:-1])
-    return indent(details, " " * 2)
-
-
 def base_format(
     *,
     language: str,
-    run: Callable,
+    run: Callable | None = None,
+    runner: Runner | None = None,
     code: str,
     md: Markdown,
     html: bool = False,
@@ -113,6 +55,8 @@ def base_format(
     Parameters:
         language: The code language.
         run: Function that runs code and returns output.
+        runner: A runner accepting an immutable execution request
+            and returning an execution result. Takes precedence over `run`.
         code: The code to execute.
         md: The Markdown instance.
         html: Whether to inject output as HTML directly, without rendering.
@@ -134,8 +78,23 @@ def base_format(
     Returns:
         HTML contents.
     """
-    markdown = MarkdownConverter(md, update_toc=update_toc)
     extra = options.get("extra", {})
+    block = ParsedBlock(
+        language=language,
+        code=code,
+        id=id,
+        id_prefix=id_prefix,
+        html=html,
+        source=source,
+        result=result,
+        returncode=returncode,
+        session=session,
+        update_toc=update_toc,
+        tabs=tabs,
+        workdir=workdir,
+        width=width,
+        extra=extra,
+    )
 
     if transform_source:
         source_input, source_output = transform_source(code)
@@ -143,50 +102,16 @@ def base_format(
         source_input = code
         source_output = code
 
-    try:
-        with working_directory(workdir), console_width(width):
-            output = run(source_input, returncode=returncode, session=session, id=id, **extra)
-    except ExecutionError as error:
-        identifier = id or extra.get("title", "")
-        identifier = identifier and f"'{identifier}' "
-        exit_message = "errors" if error.returncode is None else f"unexpected code {error.returncode}"
-        log_message = (
-            f"Execution of {language} code block {identifier}exited with {exit_message}\n\n"
-            f"Code block is:\n\n{_format_log_details(source_input)}\n\n"
-            f"Output is:\n\n{_format_log_details(str(error), strip_fences=True)}\n"
-        )
-        _logger.warning(log_message)
-        return markdown.convert(str(error))
-
-    if not output and not source:
-        return Markup()
-
-    if html:
-        if source:
-            placeholder = f'<div class="{uuid4()}"></div>'
-            wrapped_output = add_source(
-                source=source_output,
-                location=source,
-                output=placeholder,
-                language=language,
-                tabs=tabs,
-                **extra,
-            )
-            return markdown.convert(wrapped_output, stash={placeholder: output})
-        return Markup(output)  # noqa: S704
-
-    wrapped_output = output
-    if result and source != "console":
-        wrapped_output = code_block(result, output)
-    if source:
-        wrapped_output = add_source(
-            source=source_output,
-            location=source,
-            output=wrapped_output,
-            language=language,
-            tabs=tabs,
-            result=result,
-            **extra,
-        )
-    prefix = id_prefix if id_prefix is not None else (f"{id}-" if id else None)
-    return markdown.convert(wrapped_output, id_prefix=prefix)
+    request = ExecutionRequest(
+        language=language,
+        code=source_input,
+        returncode=returncode,
+        session=session,
+        id=id,
+        extra=block.extra,
+        location=block.location,
+    )
+    actual_runner: Runner = runner if runner is not None else FunctionRunner(run)  # type: ignore[arg-type]
+    execution = execute(actual_runner, request, workdir=workdir, width=width)
+    renderer = BlockRenderer(md, update_toc=update_toc)
+    return renderer.render(block, request, execution, source_output=source_output)

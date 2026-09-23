@@ -1,0 +1,94 @@
+{
+  "python-markdown": {
+    "html": "<p><strong>Bold!</strong></p>",
+    "warnings": []
+  },
+  "python-html": {
+    "html": "<p>**Bold!**\n</p>",
+    "warnings": []
+  },
+  "python-error": {
+    "html": "<div class=\"highlight\"><pre><code>Traceback (most recent call last):\n<PACKAGE FRAMES>\n<PACKAGE FRAMES>\n  File \"<code block: n3>\", line 1, in <module>\n    raise ValueError(\"oh no!\")\nValueError: oh no!\n</code></pre></div>",
+    "warnings": [
+      [
+        "WARNING",
+        "markdown_exec: Execution of python code block exited with errors\n\nCode block is:\n\n  raise ValueError(\"oh no!\")\n\nOutput is:\n\n  Traceback (most recent call last):\n<PACKAGE FRAMES>\n<PACKAGE FRAMES>\n    File \"<code block: n3>\", line 1, in <module>\n      raise ValueError(\"oh no!\")\n  ValueError: oh no!\n\n"
+      ]
+    ]
+  },
+  "python-error-with-id": {
+    "html": "<div class=\"highlight\"><pre><code>Traceback (most recent call last):\n<PACKAGE FRAMES>\n<PACKAGE FRAMES>\n  File \"<code block: id golden-block>\", line 1\n    broken(\n          ^\nSyntaxError: '(' was never closed\n</code></pre></div>",
+    "warnings": [
+      [
+        "WARNING",
+        "markdown_exec: Execution of python code block 'golden-block' exited with errors\n\nCode block is:\n\n  broken(\n\nOutput is:\n\n  Traceback (most recent call last):\n<PACKAGE FRAMES>\n<PACKAGE FRAMES>\n    File \"<code block: id golden-block>\", line 1\n      broken(\n            ^\n  SyntaxError: '(' was never closed\n\n"
+      ]
+    ]
+  },
+  "python-sessions": {
+    "html": "<p></p>\n<p>42</p>",
+    "warnings": []
+  },
+  "pycon-block": {
+    "html": "<p>pycon ok</p>",
+    "warnings": []
+  },
+  "pycon-console-source": {
+    "html": "<div class=\"highlight\"><pre><code>>>> print(\"ok\")\nok\n</code></pre></div>",
+    "warnings": []
+  },
+  "sh-markdown": {
+    "html": "<p><strong>Bold!</strong></p>",
+    "warnings": []
+  },
+  "sh-error": {
+    "html": "<div class=\"highlight\"><pre><code>sh: -c: line 0: syntax error near unexpected token `\"wrong syntax\"'\nsh: -c: line 0: `echo(\"wrong syntax\")'\n</code></pre></div>",
+    "warnings": [
+      [
+        "WARNING",
+        "markdown_exec: Execution of sh code block exited with unexpected code 2\n\nCode block is:\n\n  echo(\"wrong syntax\")\n\nOutput is:\n\n  sh: -c: line 0: syntax error near unexpected token `\"wrong syntax\"'\n  sh: -c: line 0: `echo(\"wrong syntax\")'\n\n"
+      ]
+    ]
+  },
+  "sh-returncode": {
+    "html": "<p>Not in the mood</p>",
+    "warnings": []
+  },
+  "bash-tabbed-source": {
+    "html": "<div class=\"tabbed-set\" data-tabs=\"1:2\"><input checked=\"checked\" id=\"exec-10--__tabbed_1_1\" name=\"exec-10--__tabbed_1\" type=\"radio\" /><label for=\"exec-10--__tabbed_1_1\">Source</label><div class=\"tabbed-content\">\n<div class=\"highlight\"><pre><code>echo hello\n</code></pre></div>\n</div>\n<input id=\"exec-10--__tabbed_1_2\" name=\"exec-10--__tabbed_1\" type=\"radio\" /><label for=\"exec-10--__tabbed_1_2\">Result</label><div class=\"tabbed-content\">\n<p>hello</p>\n</div>\n</div>",
+    "warnings": []
+  },
+  "console-block": {
+    "html": "<p>console ok</p>",
+    "warnings": []
+  },
+  "md-nested": {
+    "html": "<p><strong>Bold!</strong></p>",
+    "warnings": []
+  },
+  "python-source-and-result": {
+    "html": "<div class=\"highlight\"><pre><code>print(\"hi\")\n</code></pre></div>\n<div class=\"highlight\"><pre><code>hi\n</code></pre></div>",
+    "warnings": []
+  },
+  "python-hidden-line": {
+    "html": "<div class=\"highlight\"><pre><code>print(hidden)\n</code></pre></div>\n<p>x</p>",
+    "warnings": []
+  },
+  "python-empty-output": {
+    "html": "<p></p>",
+    "warnings": []
+  },
+  "python-empty-output-with-source": {
+    "html": "<div class=\"tabbed-set\" data-tabs=\"1:2\"><input checked=\"checked\" id=\"exec-16--__tabbed_1_1\" name=\"exec-16--__tabbed_1\" type=\"radio\" /><label for=\"exec-16--__tabbed_1_1\">Source</label><div class=\"tabbed-content\">\n<div class=\"highlight\"><pre><code>x = 1\n</code></pre></div>\n</div>\n<input id=\"exec-16--__tabbed_1_2\" name=\"exec-16--__tabbed_1\" type=\"radio\" /><label for=\"exec-16--__tabbed_1_2\">Result</label><div class=\"tabbed-content\"></div>\n</div>",
+    "warnings": []
+  },
+  "python-error-with-source": {
+    "html": "<div class=\"highlight\"><pre><code>Traceback (most recent call last):\n<PACKAGE FRAMES>\n<PACKAGE FRAMES>\n  File \"<code block: n12>\", line 1, in <module>\n    raise RuntimeError(\"with source\")\nRuntimeError: with source\n</code></pre></div>",
+    "warnings": [
+      [
+        "WARNING",
+        "markdown_exec: Execution of python code block exited with errors\n\nCode block is:\n\n  raise RuntimeError(\"with source\")\n\nOutput is:\n\n  Traceback (most recent call last):\n<PACKAGE FRAMES>\n<PACKAGE FRAMES>\n    File \"<code block: n12>\", line 1, in <module>\n      raise RuntimeError(\"with source\")\n  RuntimeError: with source\n\n"
+      ]
+    ]
+  }
+}

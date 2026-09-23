@@ -14,8 +14,9 @@ from mkdocs.plugins import BasePlugin
 from mkdocs.utils import write_file
 
 from markdown_exec._internal.logger import patch_loggers
-from markdown_exec._internal.main import formatter, formatters, validator
+from markdown_exec._internal.main import custom_fences, formatters
 from markdown_exec._internal.rendering import MarkdownConverter, markdown_config
+from markdown_exec._internal.sessions import session_manager
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -93,16 +94,8 @@ class MarkdownExecPlugin(BasePlugin[MarkdownExecPluginConfig]):
         self.languages = self.config.languages
         mdx_configs = config.setdefault("mdx_configs", {})
         superfences = mdx_configs.setdefault("pymdownx.superfences", {})
-        custom_fences = superfences.setdefault("custom_fences", [])
-        for language in self.languages:
-            custom_fences.append(
-                {
-                    "name": language,
-                    "class": language,
-                    "validator": validator,
-                    "format": formatter,
-                },
-            )
+        fences = superfences.setdefault("custom_fences", [])
+        fences.extend(custom_fences(self.languages))
         markdown_config.save(config.markdown_extensions, config.mdx_configs)
         return config
 
@@ -125,6 +118,7 @@ class MarkdownExecPlugin(BasePlugin[MarkdownExecPluginConfig]):
         """Reset the plugin state."""
         MarkdownConverter.counter = 0
         markdown_config.reset()
+        session_manager.close()
         if self.mkdocs_config_dir is None:
             os.environ.pop("MKDOCS_CONFIG_DIR", None)
         else:
