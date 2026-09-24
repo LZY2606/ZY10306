@@ -7,17 +7,19 @@ from contextlib import contextmanager
 from pathlib import Path
 from textwrap import indent
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 from markupsafe import Markup
 
 from markdown_exec._internal.logger import get_logger
-from markdown_exec._internal.rendering import MarkdownConverter, add_source, code_block
+from markdown_exec._internal.renderer import Renderer
+from markdown_exec._internal.runner import ExecutionRequest, ExecutionResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
     from markdown.core import Markdown
+
+    from markdown_exec._internal.runner import Runner
 
 _logger = get_logger(__name__)
 
@@ -88,10 +90,31 @@ def _format_log_details(details: str, *, strip_fences: bool = False) -> str:
     return indent(details, " " * 2)
 
 
+class _CallableRunner:
+    """Adapter turning a legacy `run` callable into a runner."""
+
+    def __init__(self, func: Callable) -> None:
+        self.func = func
+
+    def run(self, request: ExecutionRequest) -> ExecutionResult:
+        try:
+            output = self.func(
+                request.code,
+                returncode=request.returncode,
+                session=request.session,
+                id=request.identifier,
+                **request.extra,
+            )
+        except ExecutionError as error:
+            return ExecutionResult(error=str(error), returncode=error.returncode, fenced_error=True)
+        return ExecutionResult(stdout=output, returncode=request.returncode)
+
+
 def base_format(
     *,
     language: str,
-    run: Callable,
+    run: Callable | None = None,
+    runner: Runner | None = None,
     code: str,
     md: Markdown,
     html: bool = False,
@@ -112,7 +135,10 @@ def base_format(
 
     Parameters:
         language: The code language.
-        run: Function that runs code and returns output.
+        run: Function that runs code and returns output (legacy interface,
+            adapted into a runner).
+        runner: A runner turning an immutable execution request
+            into an execution result.
         code: The code to execute.
         md: The Markdown instance.
         html: Whether to inject output as HTML directly, without rendering.
@@ -134,7 +160,6 @@ def base_format(
     Returns:
         HTML contents.
     """
-    markdown = MarkdownConverter(md, update_toc=update_toc)
     extra = options.get("extra", {})
 
     if transform_source:
@@ -143,50 +168,45 @@ def base_format(
         source_input = code
         source_output = code
 
-    try:
-        with working_directory(workdir), console_width(width):
-            output = run(source_input, returncode=returncode, session=session, id=id, **extra)
-    except ExecutionError as error:
+    if runner is None:
+        runner = _CallableRunner(run)
+    renderer = Renderer(
+        md,
+        language=language,
+        html=html,
+        source=source,
+        result=result,
+        tabs=tabs,
+        identifier=id,
+        id_prefix=id_prefix,
+        update_toc=update_toc,
+        extra=extra,
+    )
+    request = ExecutionRequest(
+        code=source_input,
+        language=language,
+        returncode=returncode,
+        session=session,
+        identifier=id,
+        extra=extra,
+    )
+    with working_directory(workdir), console_width(width):
+        execution = runner.run(request)
+
+    if not execution.ok:
         identifier = id or extra.get("title", "")
         identifier = identifier and f"'{identifier}' "
-        exit_message = "errors" if error.returncode is None else f"unexpected code {error.returncode}"
+        exit_message = "errors" if execution.returncode is None else f"unexpected code {execution.returncode}"
         log_message = (
             f"Execution of {language} code block {identifier}exited with {exit_message}\n\n"
             f"Code block is:\n\n{_format_log_details(source_input)}\n\n"
-            f"Output is:\n\n{_format_log_details(str(error), strip_fences=True)}\n"
+            f"Output is:\n\n{_format_log_details(execution.error or '', strip_fences=True)}\n"
         )
         _logger.warning(log_message)
-        return markdown.convert(str(error))
+        return renderer.render_error(execution)
 
+    output = execution.stdout
     if not output and not source:
         return Markup()
 
-    if html:
-        if source:
-            placeholder = f'<div class="{uuid4()}"></div>'
-            wrapped_output = add_source(
-                source=source_output,
-                location=source,
-                output=placeholder,
-                language=language,
-                tabs=tabs,
-                **extra,
-            )
-            return markdown.convert(wrapped_output, stash={placeholder: output})
-        return Markup(output)  # noqa: S704
-
-    wrapped_output = output
-    if result and source != "console":
-        wrapped_output = code_block(result, output)
-    if source:
-        wrapped_output = add_source(
-            source=source_output,
-            location=source,
-            output=wrapped_output,
-            language=language,
-            tabs=tabs,
-            result=result,
-            **extra,
-        )
-    prefix = id_prefix if id_prefix is not None else (f"{id}-" if id else None)
-    return markdown.convert(wrapped_output, id_prefix=prefix)
+    return renderer.render_output(output, source_output)

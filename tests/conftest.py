@@ -3,7 +3,7 @@
 import pytest
 from markdown import Markdown
 
-from markdown_exec import formatter, formatters, validator
+from markdown_exec import custom_fences, formatters
 
 
 @pytest.fixture
@@ -13,16 +13,7 @@ def md() -> Markdown:
     Returns:
         Markdown instance.
     """
-    fences = [
-        {
-            "name": language,
-            "class": language,
-            "validator": validator,
-            "format": formatter,
-        }
-        for language in formatters
-    ]
     return Markdown(
         extensions=["pymdownx.superfences", "pymdownx.tabbed"],
-        extension_configs={"pymdownx.superfences": {"custom_fences": fences}},
+        extension_configs={"pymdownx.superfences": {"custom_fences": custom_fences(list(formatters))}},
     )

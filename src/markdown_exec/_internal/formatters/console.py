@@ -6,8 +6,8 @@ import textwrap
 from typing import TYPE_CHECKING, Any
 
 from markdown_exec._internal.formatters.base import base_format
-from markdown_exec._internal.formatters.sh import _run_sh
 from markdown_exec._internal.logger import get_logger
+from markdown_exec._internal.runner import ShellRunner
 
 if TYPE_CHECKING:
     from markupsafe import Markup
@@ -26,4 +26,4 @@ def _transform_source(code: str) -> tuple[str, str]:
 
 
 def _format_console(**kwargs: Any) -> Markup:
-    return base_format(language="console", run=_run_sh, transform_source=_transform_source, **kwargs)
+    return base_format(language="console", runner=ShellRunner("sh"), transform_source=_transform_source, **kwargs)

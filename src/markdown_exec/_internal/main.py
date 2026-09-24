@@ -38,6 +38,30 @@ formatters = {
 }
 """Formatters for each language."""
 
+
+def custom_fences(languages: list[str]) -> list[dict[str, Any]]:
+    """Map language names to SuperFences custom fences.
+
+    This is the adapter used by integrations (like the MkDocs plugin)
+    to wire their configuration and hooks into Markdown Exec.
+
+    Parameters:
+        languages: The languages to enable execution for.
+
+    Returns:
+        A list of SuperFences custom fences.
+    """
+    return [
+        {
+            "name": language,
+            "class": language,
+            "validator": validator,
+            "format": formatter,
+        }
+        for language in languages
+    ]
+
+
 # negative look behind: matches only if | (pipe) if not preceded by \ (backslash)
 _tabs_re = re.compile(r"(?<!\\)\|")
 
